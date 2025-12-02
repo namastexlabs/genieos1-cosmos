@@ -242,6 +242,24 @@ function forceAutoUpdate() {
   }));
 }
 
+let testProxmoxConnection = (config) => {
+  return fetch('/cosmos/api/proxmox-test', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(config)
+  }).then(async (response) => {
+    let rep;
+    try {
+      rep = await response.json();
+    } catch {
+      throw new Error('Server error');
+    }
+    return rep;
+  });
+}
+
 const isDemo = import.meta.env.MODE === 'demo';
 
 let auth = _auth;
@@ -298,4 +316,5 @@ export {
   restartServer,
   forceAutoUpdate,
   backups,
+  testProxmoxConnection,
 };
