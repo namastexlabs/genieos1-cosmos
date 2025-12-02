@@ -2,10 +2,10 @@ name: Build and Release Cosmos
 
 on:
   push:
-    branches: [master, feature/proxmox-lxc-runtime]
+    branches: [main, dev]
     tags: ['v*']
   pull_request:
-    branches: [master]
+    branches: [main, dev]
   workflow_dispatch:
     inputs:
       version_override:
@@ -64,7 +64,14 @@ jobs:
 
     - name: Copy assets and package
       run: |
+        # Verify binaries were built
+        echo "=== Checking build directory ==="
+        ls -la build/
+
+        # Make binaries executable
         chmod +x build/cosmos build/cosmos-arm64 build/cosmos-launcher build/cosmos-launcher-arm64
+
+        # Copy optional assets (ok to fail)
         cp start.sh build/ 2>/dev/null || true
         cp -r static build/
         cp GeoLite2-Country.mmdb build/ 2>/dev/null || true
@@ -81,16 +88,23 @@ jobs:
         }
         EOF
 
-        # Package AMD64
-        cd build
-        zip -r ../cosmos-genieos-${{ steps.version.outputs.VERSION }}-amd64.zip \
-          cosmos cosmos-launcher static/ meta.json 2>/dev/null || true
+        echo "=== Build directory contents ==="
+        ls -la build/
 
-        # Package ARM64
+        # Package AMD64 (MUST succeed)
+        cd build
+        echo "=== Packaging AMD64 ==="
+        zip -r ../cosmos-genieos-${{ steps.version.outputs.VERSION }}-amd64.zip \
+          cosmos cosmos-launcher static/ meta.json
+
+        # Package ARM64 (MUST succeed)
+        echo "=== Packaging ARM64 ==="
         zip -r ../cosmos-genieos-${{ steps.version.outputs.VERSION }}-arm64.zip \
-          cosmos-arm64 cosmos-launcher-arm64 static/ meta.json 2>/dev/null || true
+          cosmos-arm64 cosmos-launcher-arm64 static/ meta.json
 
         cd ..
+        echo "=== Generated packages ==="
+        ls -la cosmos-genieos-*.zip
         sha256sum cosmos-genieos-*.zip > checksums.sha256
 
     - name: Upload artifacts
