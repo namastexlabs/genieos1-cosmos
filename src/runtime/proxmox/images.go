@@ -1,12 +1,11 @@
 package proxmox
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"strings"
 
-	"github.com/azukaar/cosmos-server/src/runtime"
+	runtime "github.com/azukaar/cosmos-server/src/runtime/types"
 	"github.com/azukaar/cosmos-server/src/utils"
 )
 
@@ -15,7 +14,7 @@ import (
 // Templates are stored in storage pools (e.g., local:vztmpl/debian-12.tar.zst)
 
 // PullImage downloads an LXC template
-func (p *ProxmoxRuntime) PullImage(ctx context.Context, ref string) (io.ReadCloser, error) {
+func (p *ProxmoxRuntime) PullImage(ref string) (io.ReadCloser, error) {
 	if !p.connected {
 		return nil, fmt.Errorf("not connected to Proxmox")
 	}
@@ -37,7 +36,7 @@ func (p *ProxmoxRuntime) PullImage(ctx context.Context, ref string) (io.ReadClos
 }
 
 // ListImages returns available LXC templates
-func (p *ProxmoxRuntime) ListImages(ctx context.Context) ([]runtime.Image, error) {
+func (p *ProxmoxRuntime) ListImages() ([]runtime.Image, error) {
 	if !p.connected {
 		return nil, fmt.Errorf("not connected to Proxmox")
 	}
@@ -70,7 +69,7 @@ func (p *ProxmoxRuntime) ListImages(ctx context.Context) ([]runtime.Image, error
 }
 
 // RemoveImage removes an LXC template
-func (p *ProxmoxRuntime) RemoveImage(ctx context.Context, id string) error {
+func (p *ProxmoxRuntime) RemoveImage(id string) error {
 	if !p.connected {
 		return fmt.Errorf("not connected to Proxmox")
 	}

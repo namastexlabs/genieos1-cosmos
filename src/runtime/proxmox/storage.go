@@ -1,10 +1,9 @@
 package proxmox
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/azukaar/cosmos-server/src/runtime"
+	runtime "github.com/azukaar/cosmos-server/src/runtime/types"
 	"github.com/azukaar/cosmos-server/src/utils"
 )
 
@@ -13,7 +12,7 @@ import (
 // Volumes are typically bind mounts or dedicated storage volumes
 
 // CreateVolume creates a storage volume
-func (p *ProxmoxRuntime) CreateVolume(ctx context.Context, config runtime.VolumeConfig) (string, error) {
+func (p *ProxmoxRuntime) CreateVolume(config runtime.VolumeConfig) (string, error) {
 	// In Proxmox, volumes are typically:
 	// 1. Bind mounts from host paths
 	// 2. Storage volumes in a storage pool (local-lvm, etc.)
@@ -30,7 +29,7 @@ func (p *ProxmoxRuntime) CreateVolume(ctx context.Context, config runtime.Volume
 }
 
 // RemoveVolume removes a storage volume
-func (p *ProxmoxRuntime) RemoveVolume(ctx context.Context, id string) error {
+func (p *ProxmoxRuntime) RemoveVolume(id string) error {
 	// Remove volume from Proxmox storage
 	// DELETE /nodes/{node}/storage/{storage}/content/{volume}
 
@@ -39,7 +38,7 @@ func (p *ProxmoxRuntime) RemoveVolume(ctx context.Context, id string) error {
 }
 
 // ListVolumes returns available volumes
-func (p *ProxmoxRuntime) ListVolumes(ctx context.Context) ([]runtime.Volume, error) {
+func (p *ProxmoxRuntime) ListVolumes() ([]runtime.Volume, error) {
 	if !p.connected {
 		return nil, fmt.Errorf("not connected to Proxmox")
 	}

@@ -1,10 +1,9 @@
 package proxmox
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/azukaar/cosmos-server/src/runtime"
+	runtime "github.com/azukaar/cosmos-server/src/runtime/types"
 	"github.com/azukaar/cosmos-server/src/utils"
 )
 
@@ -13,7 +12,7 @@ import (
 // Container-specific networks are implemented via firewall rules and bridge isolation
 
 // CreateNetwork creates a network (in Proxmox context, this is typically a bridge or VLAN tag)
-func (p *ProxmoxRuntime) CreateNetwork(ctx context.Context, config runtime.NetworkConfig) (string, error) {
+func (p *ProxmoxRuntime) CreateNetwork(config runtime.NetworkConfig) (string, error) {
 	// Proxmox networks are created at the node level, not per-container
 	// For Cosmos compatibility, we'll track "virtual" networks in metadata
 	// and map them to Proxmox bridges or VLAN tags
@@ -33,14 +32,14 @@ func (p *ProxmoxRuntime) CreateNetwork(ctx context.Context, config runtime.Netwo
 }
 
 // RemoveNetwork removes a network
-func (p *ProxmoxRuntime) RemoveNetwork(ctx context.Context, id string) error {
+func (p *ProxmoxRuntime) RemoveNetwork(id string) error {
 	// Remove from metadata tracking
 	utils.Log(fmt.Sprintf("Network '%s' removed from tracking", id))
 	return nil
 }
 
 // ListNetworks returns available networks (Proxmox bridges)
-func (p *ProxmoxRuntime) ListNetworks(ctx context.Context) ([]runtime.Network, error) {
+func (p *ProxmoxRuntime) ListNetworks() ([]runtime.Network, error) {
 	if !p.connected {
 		return nil, fmt.Errorf("not connected to Proxmox")
 	}
@@ -63,7 +62,7 @@ func (p *ProxmoxRuntime) ListNetworks(ctx context.Context) ([]runtime.Network, e
 }
 
 // ConnectToNetwork connects a container to a network
-func (p *ProxmoxRuntime) ConnectToNetwork(ctx context.Context, containerID, networkID string, opts runtime.NetworkConnectOptions) error {
+func (p *ProxmoxRuntime) ConnectToNetwork(containerID, networkID string, opts runtime.NetworkConnectOptions) error {
 	// In Proxmox, this means modifying the container's network interface
 	// to use a specific bridge or VLAN
 
@@ -78,7 +77,7 @@ func (p *ProxmoxRuntime) ConnectToNetwork(ctx context.Context, containerID, netw
 }
 
 // DisconnectFromNetwork disconnects a container from a network
-func (p *ProxmoxRuntime) DisconnectFromNetwork(ctx context.Context, containerID, networkID string) error {
+func (p *ProxmoxRuntime) DisconnectFromNetwork(containerID, networkID string) error {
 	utils.Log(fmt.Sprintf("Container %s disconnected from network %s", containerID, networkID))
 	return nil
 }

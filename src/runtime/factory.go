@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/azukaar/cosmos-server/src/runtime/docker"
 	"github.com/azukaar/cosmos-server/src/runtime/proxmox"
 	"github.com/azukaar/cosmos-server/src/runtime/types"
 	"github.com/azukaar/cosmos-server/src/utils"
@@ -75,10 +76,16 @@ func CloseRuntime() error {
 }
 
 // NewDockerRuntime creates a Docker runtime instance
-// TODO: Implementation will be refactored from existing /src/docker/ code
 func NewDockerRuntime(config *types.DockerConfig) (types.ContainerRuntime, error) {
-	// For now, return error - will be implemented when Docker code is refactored
-	return nil, errors.New("Docker runtime: use legacy docker package until refactoring is complete")
+	var dockerConfig *docker.Config
+	if config != nil {
+		dockerConfig = &docker.Config{
+			Host:      config.Host,
+			TLSVerify: config.TLSVerify,
+			CertPath:  config.CertPath,
+		}
+	}
+	return docker.New(dockerConfig)
 }
 
 // NewProxmoxRuntime creates a Proxmox LXC runtime instance

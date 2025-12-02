@@ -1,7 +1,6 @@
 package proxmox
 
 import (
-	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	pxapi "github.com/Telmate/proxmox-api-go/proxmox"
+	runtime "github.com/azukaar/cosmos-server/src/runtime/types"
 	"github.com/azukaar/cosmos-server/src/utils"
 )
 
@@ -197,7 +197,7 @@ func (p *ProxmoxRuntime) updateVMIDCounter() error {
 }
 
 // Create creates a new LXC container
-func (p *ProxmoxRuntime) Create(ctx context.Context, config runtime.ContainerConfig) (string, error) {
+func (p *ProxmoxRuntime) Create(config runtime.ContainerConfig) (string, error) {
 	if !p.connected {
 		return "", errors.New("not connected to Proxmox")
 	}
@@ -308,7 +308,7 @@ func (p *ProxmoxRuntime) buildLXCConfig(vmid int, config runtime.ContainerConfig
 }
 
 // Start starts a container
-func (p *ProxmoxRuntime) Start(ctx context.Context, id string) error {
+func (p *ProxmoxRuntime) Start(id string) error {
 	vmid, err := strconv.Atoi(id)
 	if err != nil {
 		return fmt.Errorf("invalid container ID: %s", id)
@@ -327,7 +327,7 @@ func (p *ProxmoxRuntime) Start(ctx context.Context, id string) error {
 }
 
 // Stop stops a container
-func (p *ProxmoxRuntime) Stop(ctx context.Context, id string) error {
+func (p *ProxmoxRuntime) Stop(id string) error {
 	vmid, err := strconv.Atoi(id)
 	if err != nil {
 		return fmt.Errorf("invalid container ID: %s", id)
@@ -346,8 +346,8 @@ func (p *ProxmoxRuntime) Stop(ctx context.Context, id string) error {
 }
 
 // Restart restarts a container
-func (p *ProxmoxRuntime) Restart(ctx context.Context, id string) error {
-	if err := p.Stop(ctx, id); err != nil {
+func (p *ProxmoxRuntime) Restart(id string) error {
+	if err := p.Stop(id); err != nil {
 		// Container might already be stopped
 		utils.Warn("Stop before restart failed: " + err.Error())
 	}
@@ -355,18 +355,18 @@ func (p *ProxmoxRuntime) Restart(ctx context.Context, id string) error {
 	// Wait a moment for clean stop
 	time.Sleep(2 * time.Second)
 
-	return p.Start(ctx, id)
+	return p.Start(id)
 }
 
 // Remove deletes a container
-func (p *ProxmoxRuntime) Remove(ctx context.Context, id string) error {
+func (p *ProxmoxRuntime) Remove(id string) error {
 	vmid, err := strconv.Atoi(id)
 	if err != nil {
 		return fmt.Errorf("invalid container ID: %s", id)
 	}
 
 	// Stop first if running
-	_ = p.Stop(ctx, id)
+	_ = p.Stop(id)
 	time.Sleep(2 * time.Second)
 
 	vmr := pxapi.NewVmRef(vmid)
@@ -385,18 +385,18 @@ func (p *ProxmoxRuntime) Remove(ctx context.Context, id string) error {
 }
 
 // Recreate recreates a container with new config
-func (p *ProxmoxRuntime) Recreate(ctx context.Context, id string, config runtime.ContainerConfig) (string, error) {
+func (p *ProxmoxRuntime) Recreate(id string, config runtime.ContainerConfig) (string, error) {
 	// Remove old container
-	if err := p.Remove(ctx, id); err != nil {
+	if err := p.Remove(id); err != nil {
 		utils.Warn("Remove during recreate failed: " + err.Error())
 	}
 
 	// Create new container
-	return p.Create(ctx, config)
+	return p.Create(config)
 }
 
 // List returns all LXC containers
-func (p *ProxmoxRuntime) List(ctx context.Context) ([]runtime.Container, error) {
+func (p *ProxmoxRuntime) List() ([]runtime.Container, error) {
 	if !p.connected {
 		return nil, errors.New("not connected to Proxmox")
 	}
@@ -438,7 +438,7 @@ func (p *ProxmoxRuntime) List(ctx context.Context) ([]runtime.Container, error) 
 }
 
 // Inspect returns detailed container information
-func (p *ProxmoxRuntime) Inspect(ctx context.Context, id string) (*runtime.ContainerDetails, error) {
+func (p *ProxmoxRuntime) Inspect(id string) (*runtime.ContainerDetails, error) {
 	vmid, err := strconv.Atoi(id)
 	if err != nil {
 		return nil, fmt.Errorf("invalid container ID: %s", id)
@@ -478,7 +478,7 @@ func (p *ProxmoxRuntime) Inspect(ctx context.Context, id string) (*runtime.Conta
 }
 
 // Logs returns container logs (via Proxmox exec/console)
-func (p *ProxmoxRuntime) Logs(ctx context.Context, id string, opts runtime.LogOptions) (io.ReadCloser, error) {
+func (p *ProxmoxRuntime) Logs(id string, opts runtime.LogOptions) (io.ReadCloser, error) {
 	// Proxmox doesn't have direct log API like Docker
 	// We can read from /var/log inside container or use lxc-attach
 	// For now, return empty reader with note
@@ -486,7 +486,7 @@ func (p *ProxmoxRuntime) Logs(ctx context.Context, id string, opts runtime.LogOp
 }
 
 // Stats returns container resource usage
-func (p *ProxmoxRuntime) Stats(ctx context.Context, id string) (*runtime.ContainerStats, error) {
+func (p *ProxmoxRuntime) Stats(id string) (*runtime.ContainerStats, error) {
 	vmid, err := strconv.Atoi(id)
 	if err != nil {
 		return nil, fmt.Errorf("invalid container ID: %s", id)
@@ -525,15 +525,15 @@ func (p *ProxmoxRuntime) Stats(ctx context.Context, id string) (*runtime.Contain
 }
 
 // StatsAll returns stats for all containers
-func (p *ProxmoxRuntime) StatsAll(ctx context.Context) ([]runtime.ContainerStats, error) {
-	containers, err := p.List(ctx)
+func (p *ProxmoxRuntime) StatsAll() ([]runtime.ContainerStats, error) {
+	containers, err := p.List()
 	if err != nil {
 		return nil, err
 	}
 
 	var allStats []runtime.ContainerStats
 	for _, c := range containers {
-		stats, err := p.Stats(ctx, c.ID)
+		stats, err := p.Stats(c.ID)
 		if err != nil {
 			continue
 		}
