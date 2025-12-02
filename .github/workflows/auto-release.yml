@@ -1,0 +1,71 @@
+name: Auto Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  auto-release:
+    runs-on: [self-hosted, Linux, X64]
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Get current version and calculate next
+      id: version
+      run: |
+        CURRENT=$(node -p "require('./package.json').version")
+        echo "Current version: $CURRENT"
+
+        # Extract base version and RC number
+        if [[ $CURRENT =~ ^([0-9]+\.[0-9]+\.[0-9]+)-rc\.([0-9]+)$ ]]; then
+          BASE="${BASH_REMATCH[1]}"
+          RC_NUM="${BASH_REMATCH[2]}"
+          NEXT_RC=$((RC_NUM + 1))
+          NEXT_VERSION="${BASE}-rc.${NEXT_RC}"
+        else
+          # If not RC format, start at rc.1
+          NEXT_VERSION="${CURRENT}-rc.1"
+        fi
+
+        echo "Next version: $NEXT_VERSION"
+        echo "CURRENT=$CURRENT" >> $GITHUB_OUTPUT
+        echo "NEXT=$NEXT_VERSION" >> $GITHUB_OUTPUT
+
+    - name: Update package.json
+      run: |
+        npm version ${{ steps.version.outputs.NEXT }} --no-git-tag-version
+
+    - name: Commit version bump
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add package.json package-lock.json
+        git commit -m "chore: bump version to ${{ steps.version.outputs.NEXT }} [skip ci]"
+        git push
+
+    - name: Create and push tag
+      run: |
+        git tag v${{ steps.version.outputs.NEXT }}
+        git push origin v${{ steps.version.outputs.NEXT }}
+
+    - name: Summary
+      run: |
+        echo "### Release Created" >> $GITHUB_STEP_SUMMARY
+        echo "- **Previous:** ${{ steps.version.outputs.CURRENT }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **New:** ${{ steps.version.outputs.NEXT }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Tag:** v${{ steps.version.outputs.NEXT }}" >> $GITHUB_STEP_SUMMARY
