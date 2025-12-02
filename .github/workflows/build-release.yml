@@ -24,10 +24,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Install build dependencies
-      run: |
-        which zip || sudo apt-get update && sudo apt-get install -y zip
-
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
@@ -98,25 +94,25 @@ jobs:
         # Package AMD64 (MUST succeed)
         cd build
         echo "=== Packaging AMD64 ==="
-        zip -r ../cosmos-genieos-${{ steps.version.outputs.VERSION }}-amd64.zip \
+        tar -czvf ../cosmos-genieos-${{ steps.version.outputs.VERSION }}-amd64.tar.gz \
           cosmos cosmos-launcher static/ meta.json
 
         # Package ARM64 (MUST succeed)
         echo "=== Packaging ARM64 ==="
-        zip -r ../cosmos-genieos-${{ steps.version.outputs.VERSION }}-arm64.zip \
+        tar -czvf ../cosmos-genieos-${{ steps.version.outputs.VERSION }}-arm64.tar.gz \
           cosmos-arm64 cosmos-launcher-arm64 static/ meta.json
 
         cd ..
         echo "=== Generated packages ==="
-        ls -la cosmos-genieos-*.zip
-        sha256sum cosmos-genieos-*.zip > checksums.sha256
+        ls -la cosmos-genieos-*.tar.gz
+        sha256sum cosmos-genieos-*.tar.gz > checksums.sha256
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: cosmos-binaries-${{ steps.version.outputs.VERSION }}
         path: |
-          cosmos-genieos-*.zip
+          cosmos-genieos-*.tar.gz
           checksums.sha256
 
   release:
@@ -143,7 +139,7 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          ./release/cosmos-genieos-*.zip
+          ./release/cosmos-genieos-*.tar.gz
           ./release/checksums.sha256
         generate_release_notes: true
         body: |
@@ -152,13 +148,13 @@ jobs:
           This release includes Proxmox LXC runtime support alongside Docker.
 
           ### Downloads
-          - **AMD64**: `cosmos-genieos-${{ steps.version.outputs.VERSION }}-amd64.zip`
-          - **ARM64**: `cosmos-genieos-${{ steps.version.outputs.VERSION }}-arm64.zip`
+          - **AMD64**: `cosmos-genieos-${{ steps.version.outputs.VERSION }}-amd64.tar.gz`
+          - **ARM64**: `cosmos-genieos-${{ steps.version.outputs.VERSION }}-arm64.tar.gz`
 
           ### Installation
           ```bash
-          curl -L https://github.com/namastexlabs/Cosmos-Server-1/releases/download/${{ github.ref_name }}/cosmos-genieos-${{ steps.version.outputs.VERSION }}-amd64.zip -o cosmos.zip
-          unzip cosmos.zip -d /opt/cosmos/
+          curl -L https://github.com/namastexlabs/Cosmos-Server-1/releases/download/${{ github.ref_name }}/cosmos-genieos-${{ steps.version.outputs.VERSION }}-amd64.tar.gz -o cosmos.tar.gz
+          tar -xzvf cosmos.tar.gz -C /opt/cosmos/
           ```
 
   deploy:
