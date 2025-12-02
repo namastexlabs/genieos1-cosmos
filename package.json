@@ -1,6 +1,6 @@
 {
   "name": "cosmos-server",
-  "version": "0.18.4",
+  "version": "0.19.0-genieos.1",
   "description": "",
   "main": "test-server.js",
   "bugs": {
