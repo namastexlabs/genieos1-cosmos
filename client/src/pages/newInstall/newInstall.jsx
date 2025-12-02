@@ -3,7 +3,7 @@ import * as Yup from 'yup';
 import { Trans, useTranslation } from 'react-i18next';
 
 // material-ui
-import { Alert, Button, Checkbox, CircularProgress, FormControl, FormHelperText, Grid, Stack, Tooltip, Typography } from '@mui/material';
+import { Alert, Button, Checkbox, CircularProgress, FormControl, FormHelperText, Grid, Stack, Tooltip, Typography, Card, CardContent, CardActionArea, TextField } from '@mui/material';
 
 // ant-ui icons
 import { CheckCircleOutlined, LeftOutlined, QuestionCircleFilled, QuestionCircleOutlined, RightOutlined } from '@ant-design/icons';
@@ -61,6 +61,51 @@ const NewInstall = () => {
     const [hostError, setHostError] = useState(null);
     const [hostIp, setHostIp] = useState(null);
     const [cleanInstall, setCleanInstall] = useState(true);
+
+    // Runtime selection state
+    const [runtimeType, setRuntimeType] = useState('docker');
+    const [proxmoxConfig, setProxmoxConfig] = useState({
+        host: '',
+        node: '',
+        tokenID: '',
+        tokenSecret: '',
+        storage: 'local-lvm',
+        skipTLSVerify: false
+    });
+    const [proxmoxTestResult, setProxmoxTestResult] = useState(null);
+    const [proxmoxTesting, setProxmoxTesting] = useState(false);
+
+    const testProxmoxConnection = async () => {
+        setProxmoxTesting(true);
+        setProxmoxTestResult(null);
+        try {
+            const result = await API.testProxmoxConnection(proxmoxConfig);
+            setProxmoxTestResult(result);
+        } catch (error) {
+            setProxmoxTestResult({ success: false, message: error.message });
+        }
+        setProxmoxTesting(false);
+    };
+
+    const saveRuntimeConfig = async () => {
+        if (runtimeType === 'proxmox') {
+            await API.newInstall({
+                step: "1",
+                runtimeType: "proxmox",
+                proxmoxHost: proxmoxConfig.host,
+                proxmoxNode: proxmoxConfig.node,
+                proxmoxTokenID: proxmoxConfig.tokenID,
+                proxmoxTokenSecret: proxmoxConfig.tokenSecret,
+                proxmoxStorage: proxmoxConfig.storage,
+                proxmoxSkipTLSVerify: proxmoxConfig.skipTLSVerify
+            });
+        } else {
+            await API.newInstall({
+                step: "1",
+                runtimeType: "docker"
+            });
+        }
+    };
 
     const refreshStatus = async () => {
         try {
@@ -129,34 +174,161 @@ const NewInstall = () => {
             }
         },
         {
-            label: t('newInstall.dockerTitle'),
-            component: <Stack item xs={12} spacing={2}>
+            label: t('newInstall.runtimeTitle') || "Choose Your Runtime ⚡ (step 1/4)",
+            component: <Stack spacing={3}>
                 <div>
-                    <QuestionCircleOutlined /> {t('newInstall.whatIsCosmos')}
+                    <QuestionCircleOutlined /> {t('newInstall.runtimeDescription') || "Select how Cosmos will manage your applications"}
                 </div>
-                {status && (status.docker ? 
-                <Alert severity="success">
-                    {t('newInstall.dockerAvail')}
-                </Alert> :
-                <Alert severity="error"><Trans i18nKey="newInstall.dockerNotConnected" />
-                </Alert>)}
-                {(status && status.docker) ? (
-                    <div>
-                        <center>
-                            <CheckCircleOutlined 
-                                style={{ fontSize: '30px', color: '#52c41a' }}
+
+                {/* Runtime Selection Cards */}
+                <Grid container spacing={2} justifyContent="center">
+                    {/* Docker Card */}
+                    <Grid item xs={12} sm={5}>
+                        <Card
+                            sx={{
+                                border: runtimeType === 'docker' ? '2px solid #1976d2' : '1px solid #444',
+                                backgroundColor: runtimeType === 'docker' ? 'rgba(25, 118, 210, 0.1)' : 'transparent',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease-in-out',
+                                '&:hover': { borderColor: '#1976d2' }
+                            }}
+                            onClick={() => { setRuntimeType('docker'); setProxmoxTestResult(null); }}
+                        >
+                            <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                                <Typography variant="h1" sx={{ fontSize: '48px', mb: 1 }}>🐋</Typography>
+                                <Typography variant="h5" gutterBottom>Docker</Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    {t('newInstall.dockerDescription') || "Containers & Compose stacks"}
+                                </Typography>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+
+                    {/* Proxmox Card */}
+                    <Grid item xs={12} sm={5}>
+                        <Card
+                            sx={{
+                                border: runtimeType === 'proxmox' ? '2px solid #e65100' : '1px solid #444',
+                                backgroundColor: runtimeType === 'proxmox' ? 'rgba(230, 81, 0, 0.1)' : 'transparent',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease-in-out',
+                                '&:hover': { borderColor: '#e65100' }
+                            }}
+                            onClick={() => setRuntimeType('proxmox')}
+                        >
+                            <CardContent sx={{ textAlign: 'center', py: 3 }}>
+                                <Typography variant="h1" sx={{ fontSize: '48px', mb: 1 }}>🖥️</Typography>
+                                <Typography variant="h5" gutterBottom>Proxmox VE</Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    {t('newInstall.proxmoxDescription') || "VMs & LXC containers on your Proxmox"}
+                                </Typography>
+                            </CardContent>
+                        </Card>
+                    </Grid>
+                </Grid>
+
+                {/* Docker Status (when Docker selected) */}
+                {runtimeType === 'docker' && (
+                    <Stack spacing={2}>
+                        {status && (status.docker ?
+                            <Alert severity="success">
+                                {t('newInstall.dockerAvail')}
+                            </Alert> :
+                            <Alert severity="warning"><Trans i18nKey="newInstall.dockerNotConnected" />
+                            </Alert>
+                        )}
+                        {(status && status.docker) ? (
+                            <div>
+                                <center>
+                                    <CheckCircleOutlined style={{ fontSize: '30px', color: '#52c41a' }} />
+                                </center>
+                            </div>
+                        ) : (
+                            <div>
+                                <center><CircularProgress color="inherit" size={24} /></center>
+                                <Typography variant="body2" textAlign="center" sx={{ mt: 1 }}>
+                                    {t('newInstall.dockerChecking')}
+                                </Typography>
+                            </div>
+                        )}
+                    </Stack>
+                )}
+
+                {/* Proxmox Configuration (when Proxmox selected) */}
+                {runtimeType === 'proxmox' && (
+                    <Stack spacing={2}>
+                        <Alert severity="info">
+                            {t('newInstall.proxmoxConfigInfo') || "Enter your Proxmox API credentials to connect"}
+                        </Alert>
+                        <TextField
+                            fullWidth
+                            label={t('newInstall.proxmoxHost') || "Proxmox Host (e.g., 192.168.1.100:8006)"}
+                            value={proxmoxConfig.host}
+                            onChange={(e) => setProxmoxConfig({...proxmoxConfig, host: e.target.value})}
+                            placeholder="192.168.1.100:8006"
+                        />
+                        <TextField
+                            fullWidth
+                            label={t('newInstall.proxmoxNode') || "Node Name"}
+                            value={proxmoxConfig.node}
+                            onChange={(e) => setProxmoxConfig({...proxmoxConfig, node: e.target.value})}
+                            placeholder="pve"
+                        />
+                        <TextField
+                            fullWidth
+                            label={t('newInstall.proxmoxTokenID') || "API Token ID (user@realm!tokenname)"}
+                            value={proxmoxConfig.tokenID}
+                            onChange={(e) => setProxmoxConfig({...proxmoxConfig, tokenID: e.target.value})}
+                            placeholder="root@pam!cosmos"
+                        />
+                        <TextField
+                            fullWidth
+                            type="password"
+                            label={t('newInstall.proxmoxTokenSecret') || "API Token Secret"}
+                            value={proxmoxConfig.tokenSecret}
+                            onChange={(e) => setProxmoxConfig({...proxmoxConfig, tokenSecret: e.target.value})}
+                            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                        />
+                        <TextField
+                            fullWidth
+                            label={t('newInstall.proxmoxStorage') || "Storage Pool"}
+                            value={proxmoxConfig.storage}
+                            onChange={(e) => setProxmoxConfig({...proxmoxConfig, storage: e.target.value})}
+                            placeholder="local-lvm"
+                        />
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                            <Checkbox
+                                checked={proxmoxConfig.skipTLSVerify}
+                                onChange={(e) => setProxmoxConfig({...proxmoxConfig, skipTLSVerify: e.target.checked})}
                             />
-                        </center>
-                    </div>
-                ) : (<><div>
-                    {t('newInstall.dockerChecking')}
-                </div>
-                <div>
-                    <center><CircularProgress color="inherit" /></center>
-                </div></>)}
+                            <Typography variant="body2">
+                                {t('newInstall.proxmoxSkipTLS') || "Skip TLS certificate verification (for self-signed certs)"}
+                            </Typography>
+                        </Stack>
+
+                        <Button
+                            variant="outlined"
+                            onClick={testProxmoxConnection}
+                            disabled={proxmoxTesting || !proxmoxConfig.host || !proxmoxConfig.tokenID || !proxmoxConfig.tokenSecret}
+                        >
+                            {proxmoxTesting ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
+                            {t('newInstall.testConnection') || "Test Connection"}
+                        </Button>
+
+                        {proxmoxTestResult && (
+                            <Alert severity={proxmoxTestResult.success ? "success" : "error"}>
+                                {proxmoxTestResult.message}
+                            </Alert>
+                        )}
+                    </Stack>
+                )}
             </Stack>,
             nextButtonLabel: () => {
-                return status && status.docker ? t('global.next') : t('newInstall.skipAction');
+                if (runtimeType === 'docker') {
+                    return status && status.docker ? t('global.next') : t('newInstall.skipAction');
+                } else {
+                    return proxmoxTestResult && proxmoxTestResult.success ? t('global.next') : '';
+                }
             }
         },
         {
@@ -614,13 +786,18 @@ const NewInstall = () => {
                         variant="contained"
                         endIcon={<RightOutlined />}
                         disabled={steps[activeStep].nextButtonLabel() == ''}
-                        onClick={() => {
+                        onClick={async () => {
                             if(activeStep == 0 && cleanInstall) {
                                 API.newInstall({
                                     step: "-1",
                                 }).then((res) => {
                                     refreshStatus()
                                 });
+                            }
+
+                            // Save runtime config when leaving step 1
+                            if(activeStep == 1) {
+                                await saveRuntimeConfig();
                             }
 
                             if(activeStep >= steps.length - 1) {

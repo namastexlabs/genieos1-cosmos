@@ -488,6 +488,7 @@ func InitServer() *mux.Router {
 	srapi.HandleFunc("/api/register", user.UserRegister)
 	srapi.HandleFunc("/api/dns", GetDNSRoute)
 	srapi.HandleFunc("/api/dns-check", CheckDNSRoute)
+	srapi.HandleFunc("/api/proxmox-test", TestProxmoxConnectionRoute)
 	srapi.HandleFunc("/api/favicon", GetFavicon)
 	srapi.HandleFunc("/api/ping", PingURL)
 	srapi.HandleFunc("/api/me", user.Me)
