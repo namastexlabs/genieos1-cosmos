@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/azukaar/cosmos-server/src/utils"
@@ -67,7 +68,7 @@ func TestProxmoxConnectionRoute(w http.ResponseWriter, req *http.Request) {
 
 	// Build API URL - handle both with and without protocol
 	host := request.Host
-	if host[0:4] != "http" {
+	if !strings.HasPrefix(host, "http://") && !strings.HasPrefix(host, "https://") {
 		host = "https://" + host
 	}
 	apiURL := fmt.Sprintf("%s/api2/json/version", host)
@@ -168,9 +169,9 @@ func TestProxmoxConnectionRoute(w http.ResponseWriter, req *http.Request) {
 				for _, s := range storageData.Data {
 					// Only include storage that can hold rootdir or images
 					if s.Content == "" ||
-					   contains(s.Content, "rootdir") ||
-					   contains(s.Content, "images") ||
-					   contains(s.Content, "vztmpl") {
+					   strings.Contains(s.Content, "rootdir") ||
+					   strings.Contains(s.Content, "images") ||
+					   strings.Contains(s.Content, "vztmpl") {
 						storageNames = append(storageNames, s.Storage)
 					}
 				}
@@ -186,17 +187,4 @@ func TestProxmoxConnectionRoute(w http.ResponseWriter, req *http.Request) {
 		Nodes:    nodeNames,
 		Storages: storageNames,
 	})
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsImpl(s, substr))
-}
-
-func containsImpl(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
